@@ -26,5 +26,31 @@ public class CalendarModel {
         this.selectedDate = date;
     }
 
+    public void toggleDate(LocalDate date) {
+        if (savedDates.contains(date)) {
+            savedDates.remove(date);
+        } else {
+            savedDates.add(date);
+        }
+    }
 
+    private void saveData() {
+        ObjectMapper mapper = new ObjectMapper();
+        try {
+            mapper.writeValue(dataFile, savedDates);
+        } catch (IOException e) {
+            System.err.println("Error saving data: " + e.getMessage());
+        }
+    }
+
+    private void loadData() {
+        ObjectMapper mapper = new ObjectMapper();
+        if (dataFile.exists()) {
+            try {
+                savedDates = mapper.readValue(dataFile, new TypeReference<Set<LocalDate>>() {});
+            } catch (IOException e) {
+                System.err.println("Error loading data: " + e.getMessage());
+            }
+        }
+    }
 }

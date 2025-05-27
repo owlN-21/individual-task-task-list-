@@ -6,103 +6,95 @@ import javafx.geometry.Pos;
 import javafx.scene.control.*;
 import javafx.collections.FXCollections;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.function.Consumer;
-
-import static javafx.scene.control.PopupControl.USE_PREF_SIZE;
-
 public class TaskListView {
     private final ListView<TaskModel> taskList = new ListView<>();
-    private final ScrollPane scrollPane = new ScrollPane();
-    private Consumer<TaskModel> onTaskStatusChanged;
 
     public TaskListView() {
         configureListView();
         setupContextMenu();
-        setupScrollPane();
-    }
-
-    private void setupScrollPane() {
-        scrollPane.setContent(taskList);
-        scrollPane.setFitToWidth(true);
-        scrollPane.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scrollPane.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        scrollPane.setStyle("-fx-background-color: transparent;");
-    }
-
-    private void setupContextMenu() {
-        ContextMenu contextMenu = new ContextMenu();
-        MenuItem deleteItem = new MenuItem("Удалить");
-        deleteItem.setOnAction(e -> {
-            TaskModel selectedTask = taskList.getSelectionModel().getSelectedItem();
-            if (selectedTask != null && onDeleteTask != null) {
-                onDeleteTask.accept(selectedTask);
-            }
-        });
-        contextMenu.getItems().add(deleteItem);
-        taskList.setContextMenu(contextMenu);
-    }
-
-    public void setOnTaskStatusChanged(Consumer<TaskModel> handler) {
-        this.onTaskStatusChanged = handler;
-    }
-
-    private Consumer<TaskModel> onDeleteTask;
-
-    public void setOnDeleteTask(Consumer<TaskModel> handler) {
-        this.onDeleteTask = handler;
     }
 
     private void configureListView() {
         taskList.setCellFactory(lv -> new ListCell<TaskModel>() {
             private final CheckBox checkBox = new CheckBox();
             private final HBox container = new HBox(10, checkBox);
-            private final Label label = new Label();
-            private final Label typeLabel = new Label();
 
             {
-                container.setAlignment(Pos.CENTER_LEFT);
-                container.getChildren().addAll(label, typeLabel);
-
-                // Остальная инициализация без изменений
+                // Обработчик изменения состояния чекбокса
+                checkBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                    TaskModel item = getItem();
+                    if (item != null) {
+                        item.setCompleted(newVal);
+                        if (onTaskStatusChanged != null) {
+                            onTaskStatusChanged.accept(item);
+                        }
+                        updateItem(item, false); // Обновляем отображение
+                    }
+                });
             }
 
             @Override
-            protected void updateItem(TaskModel task, boolean empty) {
-                super.updateItem(task, empty);
-                if (empty || task == null) {
+            protected void updateItem(TaskModel item, boolean empty) {
+                super.updateItem(item, empty);
+
+                if (empty || item == null) {
+                    setText(null);
                     setGraphic(null);
                 } else {
-                    checkBox.setSelected(task.isCompleted());
-                    label.setText(task.getDescription());
+                    checkBox.setText(item.getDescription() + " (" + item.getDate() + ")");
+                    checkBox.setSelected(item.isCompleted());
 
-                    // Устанавливаем текст и стиль для типа задачи
-                    switch (task.getType()) {
-                        case DAILY:
-                            typeLabel.setText("(ежедневно)");
-                            typeLabel.setStyle("-fx-text-fill: blue;");
-                            break;
-                        case WEEKLY:
-                            typeLabel.setText("(еженедельно)");
-                            typeLabel.setStyle("-fx-text-fill: green;");
-                            break;
-                        default:
-                            typeLabel.setText("");
-                    }
-
-                    if (task.isCompleted()) {
-                        label.setStyle("-fx-text-fill: gray; -fx-strikethrough: true;");
+                    // Стилизация в зависимости от статуса и даты
+                    if (item.isCompleted()) {
+                        // Для выполненных задач - серый цвет и зачеркивание
+                        checkBox.setStyle("-fx-text-fill: gray; -fx-strikethrough: true;");
                     } else {
-                        label.setStyle("-fx-text-fill: black; -fx-strikethrough: false;");
+                        // Для невыполненных задач проверяем просрочку
+                        if (item.getDate().isBefore(LocalDate.now())) {
+                            // Просроченные задачи - красный цвет
+                            checkBox.setStyle("-fx-text-fill: red; -fx-strikethrough: false;");
+                        } else {
+                            // Обычные задачи - черный цвет
+                            checkBox.setStyle("-fx-text-fill: black; -fx-strikethrough: false;");
+                        }
                     }
+
                     setGraphic(container);
                 }
             }
         });
+    }
+
+    private Consumer<TaskModel> onTaskStatusChanged;
+    private Consumer<TaskModel> onDeleteTask;
+
+    public void setOnTaskStatusChanged(Consumer<TaskModel> handler) {
+        this.onTaskStatusChanged = handler;
+    }
+
+    public void setOnDeleteTask(Consumer<TaskModel> handler) {
+        this.onDeleteTask = handler;
+    }
+
+    private void setupContextMenu() {
+        ContextMenu contextMenu = new ContextMenu();
+        MenuItem deleteItem = new MenuItem("Удалить");
+
+        deleteItem.setOnAction(e -> {
+            TaskModel selectedTask = taskList.getSelectionModel().getSelectedItem();
+            if (selectedTask != null && onDeleteTask != null) {
+                onDeleteTask.accept(selectedTask);
+            }
+        });
+
+        contextMenu.getItems().add(deleteItem);
+        taskList.setContextMenu(contextMenu);
     }
 
     public void updateTasks(Collection<TaskModel> tasks) {
@@ -110,12 +102,12 @@ public class TaskListView {
     }
 
     public VBox getView() {
-        VBox container = new VBox(5, scrollPane); // Используем ScrollPane вместо taskList
+        VBox container = new VBox(5, taskList);
         container.setPadding(new Insets(10));
 
-        // Настройки для правильного растягивания
-        scrollPane.setPrefViewportHeight(200);
-        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+        // Ограничиваем высоту и включаем прокрутку
+        taskList.setPrefHeight(100); // Фиксированная высота
+        taskList.setMaxHeight(Control.USE_PREF_SIZE); // Запрещаем растягиваться
 
         return container;
     }

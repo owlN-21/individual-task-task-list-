@@ -65,7 +65,7 @@ public class CalendarView {
 
         bar.getChildren().addAll( monthYearLabel, prevBtn,   nextBtn, todayBtn);
 
-            // Показываем кнопки при наведении
+        // Показываем кнопки при наведении
         bar.setOnMouseEntered(e -> {
             prevBtn.setVisible(true);
             nextBtn.setVisible(true);
