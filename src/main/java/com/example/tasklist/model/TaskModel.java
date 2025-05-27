@@ -35,8 +35,5 @@ public class TaskModel implements Serializable {
         this.completed = completed;
     }
 
-    @Override
-    public String toString() {
-        return (completed ? "[✓] " : "[ ] ") + description + " (" + date + ")";
-    }
+
 }

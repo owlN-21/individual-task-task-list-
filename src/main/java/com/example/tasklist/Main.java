@@ -37,6 +37,7 @@ public class Main extends Application {
         taskStorage = new TaskStorage();
         jsonTaskStorage = new JsonTaskStorage();
 
+
         // Загружаем сохранённые задачи из файла
         List<TaskModel> loadedTasks = jsonTaskStorage.loadTasks();
         loadedTasks.forEach(taskStorage::addTask);
@@ -48,6 +49,8 @@ public class Main extends Application {
         LocalDate today = LocalDate.now();
         taskView.updateTasks(taskStorage.getTasksForDate(today));
 
+
+
         // Контроллер задач
         taskController = new TaskController(taskStorage, taskView, jsonTaskStorage);
 
@@ -57,11 +60,11 @@ public class Main extends Application {
         CalendarController calendarController = new CalendarController(calendarModel, calendarView, taskController);
 
 
-
         // Кнопка удаления задач по дате
         taskView.setOnDeleteTask(task -> {
             taskController.removeTask(task);
         });
+
 
 
         // Основной макет
@@ -70,7 +73,7 @@ public class Main extends Application {
         root.setCenter(calendarView.getMainContainer());
         root.setBottom(new VBox(taskView.getView()));
 
-        stage.setScene(new Scene(root, 600, 500));
+        stage.setScene(new Scene(root, 600, 650));
         stage.setTitle("Task Calendar");
         stage.show();
 
@@ -78,61 +81,24 @@ public class Main extends Application {
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             jsonTaskStorage.saveTasks(taskStorage.getAllTasks());
         }));
+
+        // Создаем основной контейнер для списка задач
+        Region taskListView = taskView.getView();
+
+        // Настраиваем скроллинг в главном контейнере
+        VBox bottomContainer = new VBox(10, taskListView);
+        bottomContainer.setPadding(new Insets(10));
+
+        // Ключевые настройки для скроллинга:
+        VBox.setVgrow(taskListView, Priority.ALWAYS); // Растягиваем список
+        bottomContainer.setMinHeight(100); // Минимальная высота
+
+        root.setBottom(bottomContainer);
+
+
     }
 
-    private void showAddTaskDialog() {
-        Dialog<TaskModel> dialog = new Dialog<>();
-        dialog.setTitle("Новая задача");
 
-        Label descLabel = new Label("Описание:");
-        TextField descField = new TextField();
-        Label dateLabel = new Label("Дата:");
-        DatePicker datePicker = new DatePicker(LocalDate.now());
-
-        VBox content = new VBox(10, descLabel, descField, dateLabel, datePicker);
-        dialog.getDialogPane().setContent(content);
-
-        ButtonType okButton = new ButtonType("Добавить", ButtonBar.ButtonData.OK_DONE);
-        dialog.getDialogPane().getButtonTypes().addAll(okButton, ButtonType.CANCEL);
-
-        dialog.setResultConverter(btn -> {
-            if (btn == okButton) {
-                return new TaskModel(descField.getText(), datePicker.getValue());
-            }
-            return null;
-        });
-
-        Optional<TaskModel> result = dialog.showAndWait();
-        result.ifPresent(task -> {
-            if (task.getDate() != null) {
-                taskStorage.addTask(task);
-                taskController.showTasksForDate(task.getDate());
-            }
-        });
-    }
-
-//    private void showDeleteTaskDialog() {
-//        Dialog<LocalDate> dialog = new Dialog<>();
-//        dialog.setTitle("Удаление задач по дате");
-//
-//        DatePicker datePicker = new DatePicker(LocalDate.now());
-//        dialog.getDialogPane().setContent(datePicker);
-//
-//        ButtonType deleteButton = new ButtonType("Удалить", ButtonBar.ButtonData.OK_DONE);
-//        dialog.getDialogPane().getButtonTypes().addAll(deleteButton, ButtonType.CANCEL);
-//
-//        dialog.setResultConverter(btn -> {
-//            if (btn == deleteButton) {
-//                return datePicker.getValue();
-//            }
-//            return null;
-//        });
-//
-//        dialog.showAndWait().ifPresent(date -> {
-//            taskStorage.removeTasksForDate(date);
-//            taskController.showTasksForDate(date);
-//        });
-//    }
 
     public static void main(String[] args) {
         launch(args);

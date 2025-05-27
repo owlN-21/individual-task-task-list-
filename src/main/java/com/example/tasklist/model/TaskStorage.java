@@ -28,9 +28,6 @@ public class TaskStorage {
         tasks.remove(task);
     }
 
-//    public void removeTasksForDate(LocalDate date) {
-//        tasks.removeIf(task -> task.getDate().equals(date));
-//    }
 
 
 
