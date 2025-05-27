@@ -11,21 +11,20 @@ import java.lang.reflect.Type;
 import java.nio.file.*;
 import java.time.LocalDate;
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class JsonTaskStorage {
     private static final String FILE_NAME = "tasks.json";
     private final Gson gson;
 
-    public JsonTaskStorage() {
-        gson = new GsonBuilder()
-                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
-                .setPrettyPrinting()
-                .create();
-    }
-
     public void saveTasks(List<TaskModel> tasks) {
+        // Фильтруем только оригинальные задачи (не сгенерированные экземпляры)
+        List<TaskModel> tasksToSave = tasks.stream()
+                .filter(task -> !task.isRecurringInstance())
+                .collect(Collectors.toList());
+
         try (Writer writer = new FileWriter(FILE_NAME)) {
-            gson.toJson(tasks, writer);
+            gson.toJson(tasksToSave, writer);
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -60,4 +59,46 @@ public class JsonTaskStorage {
     }
 
 
+    private static class TaskModelAdapter implements JsonSerializer<TaskModel>, JsonDeserializer<TaskModel> {
+        @Override
+        public JsonElement serialize(TaskModel task, Type type, JsonSerializationContext context) {
+            JsonObject obj = new JsonObject();
+            obj.addProperty("description", task.getDescription());
+            obj.add("date", context.serialize(task.getDate()));
+            obj.addProperty("completed", task.isCompleted());
+            obj.add("type", context.serialize(task.getType().name()));
+            if (task.getEndDate() != null) {
+                obj.add("endDate", context.serialize(task.getEndDate()));
+            }
+            return obj;
+        }
+
+        @Override
+        public TaskModel deserialize(JsonElement json, Type type, JsonDeserializationContext context)
+                throws JsonParseException {
+            JsonObject obj = json.getAsJsonObject();
+            String description = obj.get("description").getAsString();
+            LocalDate date = context.deserialize(obj.get("date"), LocalDate.class);
+            boolean completed = obj.get("completed").getAsBoolean();
+            TaskModel.TaskType taskType = TaskModel.TaskType.valueOf(obj.get("type").getAsString());
+
+            LocalDate endDate = obj.has("endDate") ?
+                    context.deserialize(obj.get("endDate"), LocalDate.class) :
+                    null;
+
+            TaskModel task = new TaskModel(description, date, taskType, endDate);
+            task.setCompleted(completed);
+            return task;
+        }
+    }
+
+
+
+    public JsonTaskStorage() {
+        gson = new GsonBuilder()
+                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
+                .registerTypeAdapter(TaskModel.class, new TaskModelAdapter())
+                .setPrettyPrinting()
+                .create();
+    }
 }

@@ -8,13 +8,13 @@ import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.util.Optional;
 
 public class CalendarController  {
     private CalendarModel model;
@@ -37,18 +37,60 @@ public class CalendarController  {
 
     private void setupEventHandlers() {
 
-
         view.getAddButton().setOnAction(e -> {
-            TextInputDialog dialog = new TextInputDialog();
+            // Создаем диалоговое окно
+            Dialog<TaskModel> dialog = new Dialog<>();
             dialog.setTitle("Добавить задачу");
-            dialog.setHeaderText("Введите описание задачи");
-            dialog.setContentText("Задача:");
+            dialog.setHeaderText("Введите данные задачи");
 
-            dialog.showAndWait().ifPresent(text -> {
-                if (!text.trim().isEmpty()) {
-                    TaskModel newTask = new TaskModel(text, model.getSelectedDate());
-                    taskController.addTask(newTask);  // метод, который добавляет задачу в storage
+            // Устанавливаем кнопки
+            ButtonType addButtonType = new ButtonType("Добавить", ButtonBar.ButtonData.OK_DONE);
+            dialog.getDialogPane().getButtonTypes().addAll(addButtonType, ButtonType.CANCEL);
+
+            // Создаем форму
+            GridPane grid = new GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
+            grid.setPadding(new Insets(20, 150, 10, 10));
+
+            TextField descriptionField = new TextField();
+            descriptionField.setPromptText("Описание");
+            ComboBox<TaskModel.TaskType> typeCombo = new ComboBox<>();
+            typeCombo.getItems().addAll(TaskModel.TaskType.values());
+            typeCombo.setValue(TaskModel.TaskType.ONE_TIME);
+            DatePicker endDatePicker = new DatePicker();
+            endDatePicker.setDisable(true);
+
+            // Обработчик изменения типа задачи
+            typeCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+                endDatePicker.setDisable(newVal == TaskModel.TaskType.ONE_TIME);
+            });
+
+            grid.add(new Label("Описание:"), 0, 0);
+            grid.add(descriptionField, 1, 0);
+            grid.add(new Label("Тип:"), 0, 1);
+            grid.add(typeCombo, 1, 1);
+            grid.add(new Label("Дата окончания:"), 0, 2);
+            grid.add(endDatePicker, 1, 2);
+
+            dialog.getDialogPane().setContent(grid);
+
+            // Преобразование результата в TaskModel
+            dialog.setResultConverter(dialogButton -> {
+                if (dialogButton == addButtonType) {
+                    return new TaskModel(
+                            descriptionField.getText(),
+                            model.getSelectedDate(),
+                            typeCombo.getValue(),
+                            typeCombo.getValue() == TaskModel.TaskType.ONE_TIME ? null : endDatePicker.getValue()
+                    );
                 }
+                return null;
+            });
+
+            Optional<TaskModel> result = dialog.showAndWait();
+            result.ifPresent(task -> {
+                taskController.addTask(task);
             });
         });
 
