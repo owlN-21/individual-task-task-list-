@@ -33,6 +33,10 @@ public class Main extends Application {
         TaskListView taskView = new TaskListView();
         TaskController taskController = new TaskController(taskStorage, taskView);
 
+        taskView.setOnDeleteTask(taskController::removeTask);
+
+        taskView.setOnTaskStatusChanged(taskController::updateTaskStatus);
+
         // Показываем задачи на сегодня
         taskController.showTasksForDate(LocalDate.now());
 

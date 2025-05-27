@@ -4,6 +4,7 @@ package com.example.tasklist.storage;
 
 import com.example.tasklist.model.TaskModel;
 import com.example.tasklist.model.TaskStorage;
+import com.example.tasklist.model.TaskType;
 import com.google.gson.*;
 import com.google.gson.reflect.TypeToken;
 
@@ -15,28 +16,66 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class JsonTaskStorage implements TaskStorage {
-    private static final String FILE_NAME = "tasks.json";
-    private final Gson gson;
     private final List<TaskModel> tasks = new ArrayList<>();
+    private final String FILE_NAME = "tasks.json";
+    private final Gson gson;
 
     public JsonTaskStorage() {
-        gson = new GsonBuilder()
+        this.gson = new GsonBuilder()
                 .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
                 .setPrettyPrinting()
+                .serializeNulls()
                 .create();
         loadTasks();
     }
 
     @Override
     public void addTask(TaskModel task) {
-        tasks.add(task);
+        if (task.getType() == TaskType.DAILY && task.getEndDate() != null) {
+            addDailyTasksExplicitly(task);
+        } else {
+            addSingleTask(task);
+        }
         saveTasks();
+    }
+
+    private void addDailyTasksExplicitly(TaskModel task) {
+        LocalDate current = task.getDate();
+        LocalDate endDate = task.getEndDate();
+
+        while (!current.isAfter(endDate)) {
+            TaskModel dailyTask = new TaskModel(
+                    task.getDescription(),
+                    current,
+                    TaskType.DAILY,
+                    endDate  // Сохраняем endDate для каждой задачи
+            );
+
+            if (!taskExists(dailyTask)) {
+                tasks.add(dailyTask);
+            }
+            current = current.plusDays(1);
+        }
+    }
+
+    private boolean taskExists(TaskModel newTask) {
+        return tasks.stream().anyMatch(existing ->
+                existing.getDescription().equals(newTask.getDescription()) &&
+                        existing.getDate().equals(newTask.getDate()) &&
+                        existing.getType() == newTask.getType()
+        );
+    }
+
+    private void addSingleTask(TaskModel task) {
+        if (!taskExists(task)) {
+            tasks.add(task);
+        }
     }
 
     @Override
     public List<TaskModel> getTasksForDate(LocalDate date) {
         return tasks.stream()
-                .filter(task -> date.equals(task.getDate()))
+                .filter(task -> task.getDate().equals(date))
                 .collect(Collectors.toList());
     }
 
@@ -47,7 +86,14 @@ public class JsonTaskStorage implements TaskStorage {
 
     @Override
     public void removeTask(TaskModel task) {
-        tasks.remove(task);
+        // Удаляем только конкретную задачу по точному совпадению всех полей
+        tasks.removeIf(t ->
+                t.getDescription().equals(task.getDescription()) &&
+                        t.getDate().equals(task.getDate()) &&
+                        t.getType() == task.getType() &&
+                        Objects.equals(t.getEndDate(), task.getEndDate()) &&
+                        t.isCompleted() == task.isCompleted()
+        );
         saveTasks();
     }
 
@@ -55,24 +101,25 @@ public class JsonTaskStorage implements TaskStorage {
     public void saveTasks() {
         try (Writer writer = new FileWriter(FILE_NAME)) {
             gson.toJson(tasks, writer);
+            System.out.println("Сохранено задач: " + tasks.size()); // Для отладки
         } catch (IOException e) {
-            e.printStackTrace();
+            System.err.println("Ошибка сохранения: " + e.getMessage());
         }
     }
 
-    @Override
     public void loadTasks() {
-        if (!Files.exists(Paths.get(FILE_NAME))) return;
-
         try (Reader reader = new FileReader(FILE_NAME)) {
-            Type taskListType = new TypeToken<List<TaskModel>>() {}.getType();
-            List<TaskModel> loadedTasks = gson.fromJson(reader, taskListType);
-            if (loadedTasks != null) {
+            Type taskListType = new TypeToken<List<TaskModel>>(){}.getType();
+            List<TaskModel> loaded = gson.fromJson(reader, taskListType);
+
+            if (loaded != null) {
                 tasks.clear();
-                tasks.addAll(loadedTasks);
+                tasks.addAll(loaded);
+                System.out.println("Загружено выполненных задач: " +
+                        tasks.stream().filter(TaskModel::isCompleted).count());
             }
         } catch (IOException e) {
-            e.printStackTrace();
+            System.out.println("Файл не найден, создаём новый");
         }
     }
 

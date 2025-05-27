@@ -1,17 +1,23 @@
 [
   {
-    "description": "nombre1",
-    "date": "2025-05-28",
-    "completed": true
+    "description": "day_one",
+    "date": "2025-05-01",
+    "type": "DAILY",
+    "completed": true,
+    "endDate": "2025-05-04"
   },
   {
-    "description": "task1",
-    "date": "2025-05-28",
-    "completed": false
+    "description": "day_one",
+    "date": "2025-05-03",
+    "type": "DAILY",
+    "completed": false,
+    "endDate": "2025-05-04"
   },
   {
-    "description": "task",
-    "date": "2025-05-15",
-    "completed": false
+    "description": "day_one",
+    "date": "2025-05-04",
+    "type": "DAILY",
+    "completed": false,
+    "endDate": "2025-05-04"
   }
 ]

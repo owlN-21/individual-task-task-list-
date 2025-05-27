@@ -1,6 +1,7 @@
 package com.example.tasklist.view;
 
 import com.example.tasklist.model.TaskModel;
+import com.example.tasklist.model.TaskType;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.*;
@@ -32,9 +33,8 @@ public class TaskListView {
                     if (item != null) {
                         item.setCompleted(newVal);
                         if (onTaskStatusChanged != null) {
-                            onTaskStatusChanged.accept(item);
+                            onTaskStatusChanged.accept(item); // Теперь это вызовет saveTasks()
                         }
-                        updateItem(item, false); // Обновляем отображение
                     }
                 });
             }
@@ -47,22 +47,26 @@ public class TaskListView {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    checkBox.setText(item.getDescription() + " (" + item.getDate() + ")");
+                    // Формируем текст с информацией о типе задачи
+                    String taskText = item.getDescription();
+                    if (item.getType() != TaskType.ONE_TIME) {
+                        taskText += " (" + item.getType().toString();
+                        if (item.getEndDate() != null) {
+                            taskText += " до " + item.getEndDate();
+                        }
+                        taskText += ")";
+                    }
+
+                    checkBox.setText(taskText);
                     checkBox.setSelected(item.isCompleted());
 
-                    // Стилизация в зависимости от статуса и даты
+                    // Стилизация (как было раньше)
                     if (item.isCompleted()) {
-                        // Для выполненных задач - серый цвет и зачеркивание
                         checkBox.setStyle("-fx-text-fill: gray; -fx-strikethrough: true;");
+                    } else if (item.getDate().isBefore(LocalDate.now())) {
+                        checkBox.setStyle("-fx-text-fill: red; -fx-strikethrough: false;");
                     } else {
-                        // Для невыполненных задач проверяем просрочку
-                        if (item.getDate().isBefore(LocalDate.now())) {
-                            // Просроченные задачи - красный цвет
-                            checkBox.setStyle("-fx-text-fill: red; -fx-strikethrough: false;");
-                        } else {
-                            // Обычные задачи - черный цвет
-                            checkBox.setStyle("-fx-text-fill: black; -fx-strikethrough: false;");
-                        }
+                        checkBox.setStyle("-fx-text-fill: black; -fx-strikethrough: false;");
                     }
 
                     setGraphic(container);
@@ -84,12 +88,12 @@ public class TaskListView {
 
     private void setupContextMenu() {
         ContextMenu contextMenu = new ContextMenu();
-        MenuItem deleteItem = new MenuItem("Удалить");
+        MenuItem deleteItem = new MenuItem("Удалить задачу");
 
         deleteItem.setOnAction(e -> {
-            TaskModel selectedTask = taskList.getSelectionModel().getSelectedItem();
-            if (selectedTask != null && onDeleteTask != null) {
-                onDeleteTask.accept(selectedTask);
+            TaskModel selected = taskList.getSelectionModel().getSelectedItem();
+            if (selected != null && onDeleteTask != null) {
+                onDeleteTask.accept(selected);
             }
         });
 
@@ -111,4 +115,6 @@ public class TaskListView {
 
         return container;
     }
+
+
 }

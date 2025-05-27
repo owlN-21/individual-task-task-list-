@@ -3,13 +3,14 @@ package com.example.tasklist.controller;
 
 import com.example.tasklist.model.CalendarModel;
 import com.example.tasklist.model.TaskModel;
+import com.example.tasklist.model.TaskType;
 import com.example.tasklist.view.CalendarView;
+import javafx.collections.FXCollections;
 import javafx.geometry.HPos;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.geometry.VPos;
-import javafx.scene.control.Button;
-import javafx.scene.control.TextInputDialog;
+import javafx.scene.control.*;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.*;
 
@@ -22,6 +23,10 @@ public class CalendarController  {
     private YearMonth currentYearMonth;
     private final TaskController taskController;
 
+
+    public LocalDate getSelectedDate() {
+        return model.getSelectedDate();
+    }
 
     public CalendarController(CalendarModel model, CalendarView view, TaskController taskController) {
         this.model = model;
@@ -39,17 +44,65 @@ public class CalendarController  {
 
 
         view.getAddButton().setOnAction(e -> {
-            TextInputDialog dialog = new TextInputDialog();
-            dialog.setTitle("Добавить задачу");
-            dialog.setHeaderText("Введите описание задачи");
-            dialog.setContentText("Задача:");
+            GridPane grid = new GridPane();
+            grid.setHgap(10);
+            grid.setVgap(10);
 
-            dialog.showAndWait().ifPresent(text -> {
-                if (!text.trim().isEmpty()) {
-                    TaskModel newTask = new TaskModel(text, model.getSelectedDate());
-                    taskController.addTask(newTask);  // метод, который добавляет задачу в storage
-                }
+            // Элементы формы
+            TextField descriptionField = new TextField();
+            DatePicker datePicker = new DatePicker(model.getSelectedDate());
+            ComboBox<TaskType> typeCombo = new ComboBox<>(FXCollections.observableArrayList(TaskType.values()));
+            typeCombo.getSelectionModel().selectFirst();
+
+            DatePicker endDatePicker = new DatePicker();
+            CheckBox hasEndDateCheck = new CheckBox("Повторять до:");
+
+            // Настройка видимости endDatePicker
+            endDatePicker.setVisible(false);
+            hasEndDateCheck.setVisible(false);
+
+            typeCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
+                boolean isRecurring = newVal != TaskType.ONE_TIME;
+                hasEndDateCheck.setVisible(isRecurring);
+                endDatePicker.setVisible(isRecurring && hasEndDateCheck.isSelected());
             });
+
+            hasEndDateCheck.selectedProperty().addListener((obs, oldVal, newVal) -> {
+                endDatePicker.setVisible(newVal);
+            });
+
+            // Размещение элементов
+            grid.addRow(0, new Label("Описание:"), descriptionField);
+            grid.addRow(1, new Label("Тип задачи:"), typeCombo);
+            grid.addRow(2, new Label("Дата:"), datePicker);
+            grid.addRow(3, hasEndDateCheck, endDatePicker);
+
+            // Настройка диалога
+            Dialog<TaskModel> dialog = new Dialog<>();
+            dialog.setTitle("Добавить задачу");
+            dialog.getDialogPane().setContent(grid);
+            dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+
+            dialog.setResultConverter(button -> {
+                if (button == ButtonType.OK) {
+                    String description = descriptionField.getText().trim();
+                    if (description.isEmpty()) {
+//                        showAlert("Ошибка", "Введите описание задачи");
+                        return null;
+                    }
+
+                    TaskType type = typeCombo.getValue();
+                    LocalDate date = datePicker.getValue();
+                    LocalDate endDate = (type != TaskType.ONE_TIME && hasEndDateCheck.isSelected())
+                            ? endDatePicker.getValue()
+                            : null;
+
+                    return new TaskModel(description, date, type, endDate);
+                }
+                return null;
+            });
+
+            dialog.showAndWait().ifPresent(taskController::addTask);
         });
 
         // Навигация по месяцам
