@@ -25,35 +25,46 @@ public class TaskStorage {
 
     private List<TaskModel> generateTaskInstances(TaskModel originalTask) {
         List<TaskModel> instances = new ArrayList<>();
-        instances.add(originalTask); // Всегда включаем оригинальную задачу
+        instances.add(originalTask); // Всегда добавляем оригинальную задачу
 
-        // Генерируем экземпляры только для повторяющихся задач
         if (originalTask.getType() != TaskModel.TaskType.ONE_TIME) {
-            LocalDate currentDate = originalTask.getDate().plusDays(1);
+            LocalDate currentDate = originalTask.getDate();
             LocalDate endDate = originalTask.getEndDate() != null ?
                     originalTask.getEndDate() :
                     LocalDate.now().plusYears(1); // Дефолтный срок - 1 год
 
-            while (!currentDate.isAfter(endDate)) {
-                if (shouldIncludeDate(originalTask, currentDate)) {
-                    TaskModel recurringInstance = new TaskModel(
-                            originalTask.getDescription(),
-                            currentDate,
-                            originalTask.getType(),
-                            originalTask.getEndDate()
-                    );
-                    recurringInstance.setCompleted(originalTask.isCompleted());
-                    instances.add(recurringInstance);
-                }
+            // Для ежедневных - начинаем со следующего дня
+            if (originalTask.getType() == TaskModel.TaskType.DAILY) {
+                currentDate = currentDate.plusDays(1);
+            }
+            // Для еженедельных - через неделю
+            else if (originalTask.getType() == TaskModel.TaskType.WEEKLY) {
+                currentDate = currentDate.plusWeeks(1);
+            }
 
-                currentDate = originalTask.getType() == TaskModel.TaskType.DAILY ?
-                        currentDate.plusDays(1) :
-                        currentDate.plusWeeks(1);
+            // Генерируем задачи пока не выйдем за endDate
+            while (!currentDate.isAfter(endDate)) {
+                TaskModel recurringInstance = new TaskModel(
+                        originalTask.getDescription(),
+                        currentDate,
+                        originalTask.getType(),
+                        originalTask.getEndDate()
+                );
+                recurringInstance.setCompleted(originalTask.isCompleted());
+                instances.add(recurringInstance);
+
+                // Увеличиваем дату в зависимости от типа задачи
+                if (originalTask.getType() == TaskModel.TaskType.DAILY) {
+                    currentDate = currentDate.plusDays(1);
+                } else {
+                    currentDate = currentDate.plusWeeks(1);
+                }
             }
         }
 
         return instances;
     }
+
 
     private boolean shouldIncludeDate(TaskModel task, LocalDate date) {
         if (task.getType() == TaskModel.TaskType.DAILY) {
