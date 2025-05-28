@@ -16,6 +16,9 @@ import javafx.scene.layout.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.format.TextStyle;
+import java.time.temporal.ChronoUnit;
+import java.util.Locale;
 
 public class CalendarController  {
     private CalendarModel model;
@@ -41,8 +44,6 @@ public class CalendarController  {
     }
 
     private void setupEventHandlers() {
-
-
         view.getAddButton().setOnAction(e -> {
             GridPane grid = new GridPane();
             grid.setHgap(10);
@@ -61,14 +62,45 @@ public class CalendarController  {
             endDatePicker.setVisible(false);
             hasEndDateCheck.setVisible(false);
 
+            // Добавляем подсказку для WEEKLY задач
             typeCombo.valueProperty().addListener((obs, oldVal, newVal) -> {
                 boolean isRecurring = newVal != TaskType.ONE_TIME;
                 hasEndDateCheck.setVisible(isRecurring);
                 endDatePicker.setVisible(isRecurring && hasEndDateCheck.isSelected());
+
+                // Для WEEKLY задач добавляем подсказку
+                if (newVal == TaskType.WEEKLY) {
+                    datePicker.setDayCellFactory(picker -> new DateCell() {
+                        @Override
+                        public void updateItem(LocalDate date, boolean empty) {
+                            super.updateItem(date, empty);
+                            if (date != null && !empty) {
+                                setTooltip(new Tooltip("Задачи будут созданы на каждый " +
+                                        date.getDayOfWeek().getDisplayName(TextStyle.FULL, Locale.getDefault())));
+                            }
+                        }
+                    });
+                } else {
+                    datePicker.setDayCellFactory(null); // Сбрасываем кастомную фабрику
+                }
             });
 
             hasEndDateCheck.selectedProperty().addListener((obs, oldVal, newVal) -> {
                 endDatePicker.setVisible(newVal);
+
+                // Валидация даты окончания
+                if (newVal && endDatePicker.getValue() != null
+                        && endDatePicker.getValue().isBefore(datePicker.getValue())) {
+                    endDatePicker.setValue(datePicker.getValue());
+                }
+            });
+
+            // Валидация даты окончания
+            endDatePicker.valueProperty().addListener((obs, oldVal, newVal) -> {
+                if (newVal != null && datePicker.getValue() != null
+                        && newVal.isBefore(datePicker.getValue())) {
+                    endDatePicker.setValue(datePicker.getValue());
+                }
             });
 
             // Размещение элементов
@@ -87,7 +119,6 @@ public class CalendarController  {
                 if (button == ButtonType.OK) {
                     String description = descriptionField.getText().trim();
                     if (description.isEmpty()) {
-//                        showAlert("Ошибка", "Введите описание задачи");
                         return null;
                     }
 
@@ -97,6 +128,12 @@ public class CalendarController  {
                             ? endDatePicker.getValue()
                             : null;
 
+                    // Дополнительная валидация для WEEKLY задач
+                    if (type == TaskType.WEEKLY && endDate != null
+                            && ChronoUnit.WEEKS.between(date, endDate) > 52) {
+                        return null;
+                    }
+
                     return new TaskModel(description, date, type, endDate);
                 }
                 return null;
@@ -105,7 +142,7 @@ public class CalendarController  {
             dialog.showAndWait().ifPresent(taskController::addTask);
         });
 
-        // Навигация по месяцам
+        // Остальные обработчики (навигация по месяцам) остаются без изменений
         ((Button) view.getTopBar().getChildren().get(1)).setOnAction(e -> {
             currentYearMonth = currentYearMonth.minusMonths(1);
             updateView();

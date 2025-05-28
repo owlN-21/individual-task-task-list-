@@ -21,19 +21,31 @@ public class TaskListView {
         setupContextMenu();
     }
 
+    public void refreshTasks() {
+        // Принудительное обновление всех элементов
+        taskList.refresh();
+    }
+
+
+
     private void configureListView() {
         taskList.setCellFactory(lv -> new ListCell<TaskModel>() {
             private final CheckBox checkBox = new CheckBox();
-            private final HBox container = new HBox(10, checkBox);
+            private final HBox container = new HBox(checkBox);
 
             {
-                // Обработчик изменения состояния чекбокса
+                // Настройка контейнера
+                container.setAlignment(Pos.CENTER_LEFT);
+                container.setSpacing(10);
+
+                // Обработчик изменения состояния
                 checkBox.selectedProperty().addListener((obs, oldVal, newVal) -> {
                     TaskModel item = getItem();
                     if (item != null) {
                         item.setCompleted(newVal);
+                        updateItemStyle(item);
                         if (onTaskStatusChanged != null) {
-                            onTaskStatusChanged.accept(item); // Теперь это вызовет saveTasks()
+                            onTaskStatusChanged.accept(item);
                         }
                     }
                 });
@@ -47,30 +59,20 @@ public class TaskListView {
                     setText(null);
                     setGraphic(null);
                 } else {
-                    // Формируем текст с информацией о типе задачи
-                    String taskText = item.getDescription();
-                    if (item.getType() != TaskType.ONE_TIME) {
-                        taskText += " (" + item.getType().toString();
-                        if (item.getEndDate() != null) {
-                            taskText += " до " + item.getEndDate();
-                        }
-                        taskText += ")";
-                    }
-
-                    checkBox.setText(taskText);
+                    checkBox.setText(item.getDescription() + " " + item.getType() );
                     checkBox.setSelected(item.isCompleted());
-
-                    // Стилизация (как было раньше)
-                    if (item.isCompleted()) {
-                        checkBox.setStyle("-fx-text-fill: gray; -fx-strikethrough: true;");
-                    } else if (item.getDate().isBefore(LocalDate.now())) {
-                        checkBox.setStyle("-fx-text-fill: red; -fx-strikethrough: false;");
-                    } else {
-                        checkBox.setStyle("-fx-text-fill: black; -fx-strikethrough: false;");
-                    }
-
+                    updateItemStyle(item);
                     setGraphic(container);
                 }
+            }
+
+            private void updateItemStyle(TaskModel item) {
+                String style = item.isCompleted()
+                        ? "-fx-text-fill: gray; -fx-strikethrough: true;"
+                        : (item.getDate().isBefore(LocalDate.now())
+                        ? "-fx-text-fill: red;"
+                        : "-fx-text-fill: black;");
+                checkBox.setStyle(style);
             }
         });
     }

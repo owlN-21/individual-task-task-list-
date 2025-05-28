@@ -1,23 +1,58 @@
 [
   {
-    "description": "day_one",
+    "description": "one_task",
+    "date": "2025-05-05",
+    "type": "ONE_TIME",
+    "completed": true,
+    "endDate": null
+  },
+  {
+    "description": "one_daily",
     "date": "2025-05-01",
     "type": "DAILY",
     "completed": true,
     "endDate": "2025-05-04"
   },
   {
-    "description": "day_one",
+    "description": "one_daily",
     "date": "2025-05-03",
+    "type": "DAILY",
+    "completed": true,
+    "endDate": "2025-05-04"
+  },
+  {
+    "description": "one_daily",
+    "date": "2025-05-04",
     "type": "DAILY",
     "completed": false,
     "endDate": "2025-05-04"
   },
   {
-    "description": "day_one",
-    "date": "2025-05-04",
-    "type": "DAILY",
+    "description": "one_weekly",
+    "date": "2025-05-01",
+    "type": "WEEKLY",
     "completed": false,
-    "endDate": "2025-05-04"
+    "endDate": "2025-05-23"
+  },
+  {
+    "description": "one_weekly",
+    "date": "2025-05-08",
+    "type": "WEEKLY",
+    "completed": true,
+    "endDate": "2025-05-23"
+  },
+  {
+    "description": "one_weekly",
+    "date": "2025-05-22",
+    "type": "WEEKLY",
+    "completed": false,
+    "endDate": "2025-05-23"
+  },
+  {
+    "description": "task",
+    "date": "2025-05-29",
+    "type": "ONE_TIME",
+    "completed": false,
+    "endDate": null
   }
 ]

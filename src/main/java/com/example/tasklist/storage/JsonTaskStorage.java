@@ -11,6 +11,7 @@ import com.google.gson.reflect.TypeToken;
 import java.io.*;
 import java.lang.reflect.Type;
 import java.nio.file.*;
+import java.time.DayOfWeek;
 import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -31,29 +32,44 @@ public class JsonTaskStorage implements TaskStorage {
 
     @Override
     public void addTask(TaskModel task) {
-        if (task.getType() == TaskType.DAILY && task.getEndDate() != null) {
-            addDailyTasksExplicitly(task);
+        if (task.getType() == TaskType.WEEKLY && task.getEndDate() != null) {
+            addWeeklyTasks(task);
+        } else if (task.getType() == TaskType.DAILY && task.getEndDate() != null) {
+            addDailyTasks(task);
         } else {
             addSingleTask(task);
         }
         saveTasks();
     }
 
-    private void addDailyTasksExplicitly(TaskModel task) {
-        LocalDate current = task.getDate();
-        LocalDate endDate = task.getEndDate();
+    private void addWeeklyTasks(TaskModel template) {
+        LocalDate current = template.getDate();
+        DayOfWeek targetDayOfWeek = current.getDayOfWeek();
 
-        while (!current.isAfter(endDate)) {
+        while (!current.isAfter(template.getEndDate())) {
+            if (current.getDayOfWeek() == targetDayOfWeek) {
+                TaskModel weeklyTask = new TaskModel(
+                        template.getDescription(),
+                        current,
+                        TaskType.WEEKLY,
+                        template.getEndDate()
+                );
+                addSingleTask(weeklyTask);
+            }
+            current = current.plusDays(1);
+        }
+    }
+
+    private void addDailyTasks(TaskModel template) {
+        LocalDate current = template.getDate();
+        while (!current.isAfter(template.getEndDate())) {
             TaskModel dailyTask = new TaskModel(
-                    task.getDescription(),
+                    template.getDescription(),
                     current,
                     TaskType.DAILY,
-                    endDate  // Сохраняем endDate для каждой задачи
+                    template.getEndDate()
             );
-
-            if (!taskExists(dailyTask)) {
-                tasks.add(dailyTask);
-            }
+            addSingleTask(dailyTask);
             current = current.plusDays(1);
         }
     }
